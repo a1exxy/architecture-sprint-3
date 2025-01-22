@@ -1,0 +1,41 @@
+@startuml
+title Диаграмма кода
+
+!define RECTANGLE class
+
+package "Database" <<Database>> {
+
+}
+
+package "Device" <<Frame>> {
+    class Device {
+        Класс реализует сущность устройства
+        ..
+        ..Методы..
+        + findDevice(serialNumber)
+        + getDeviceById(id)
+        + getDataFromCache()
+        + setDataToCache()
+    }
+
+    class DataRepository {
+        Класс взаимодействия с БД
+        ..
+    }
+
+    class DTO {
+        Класс описывающий структуру БД
+        ..
+        ..Атрибуты..
+        int deviceId;
+        int accountId;
+        string devicveType;
+        string serialNumber;
+    }
+
+    DTO --> DataRepository
+    DataRepository --> Device
+    DataRepository --> Database
+}
+
+@enduml

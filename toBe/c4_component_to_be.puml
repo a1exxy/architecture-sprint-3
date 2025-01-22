@@ -1,0 +1,83 @@
+@startuml
+
+title Диаграмма компонент SaaS системы SmartHome (To be) 
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!define SPRITESURL https://raw.githubusercontent.com/rabelenda/cicon-plantuml-sprites/v1.0/sprites
+!includeurl SPRITESURL/postgresql.puml
+!includeurl SPRITESURL/java.puml
+!includeurl SPRITESURL/redis.puml
+
+System_Ext(iot, "IOT Устройства", "Котлы, датчики, реле света, замки")    
+System_Boundary(smartHome, "SaaS система SmartHome"){
+    Container(Gateway, "Api Gateway", "Container: Apisix")
+    Container(TelemetryConsumer, "Telemetry Consumer", "Container: Java", "Выбирает сообщения из кафки и сохраняет в БД")
+    Container(AccountControl, "Account Control", "Container: Java", "Контроль использования услуг (разрешает остальным сервисам обслуживать клиента)")
+
+    ContainerDb(DeviceDB, "DeviceDB", "Container: PostgreSQL", "Хранит данные устройств", $sprite="postgresql")    
+    Container(RegistrationCache, "Device Registration Cache", "Container: Valkey", "Кеширование данных о привязке устройства к клиенту", $sprite="redis")
+    Boundary(DeviceRegistrationContainer, "Container: Device Registration") {
+        Container(ApiRegistration, "API Registration Service", "Component: Java", "Предоставляет API сервиса регистрации устройств")
+        Container(CheckAccount, "Check Account", "Component: Java", "Проверяет возможность обслуживания устройств")
+        Container(GetDevice, "Get Device", "Component: Java", "Предоставляет данные о устройстве")
+        Container(AddDevice, "Add Device", "Component: Java", "Обеспечивает добавление устройств")
+        Container(DelDevice, "Delete Device", "Component: Java", "Обеспечивает удаление устройств")
+
+        Rel(GetDevice, RegistrationCache, "Кэширование данных об устройсвах")
+        Rel(GetDevice, CheckAccount, "")
+        Rel(AddDevice, CheckAccount, "")
+        Rel(GetDevice, DeviceDB, "")
+        Rel(AddDevice, DeviceDB, "")
+        Rel(DelDevice, DeviceDB, "")
+        Rel(DelDevice, RegistrationCache, "Очистка кэша при удалении устройства")
+        Rel(ApiRegistration, GetDevice, "Получение данных об устройствах")
+        Rel(ApiRegistration, AddDevice, "Запросы на добавления устройств")
+        Rel(ApiRegistration, DelDevice, "Запросы на удаление устройств")
+    }
+    Rel(CheckAccount, AccountControl, "")
+    Rel(Gateway, ApiRegistration, "CRUD запросы об устройствах")
+    Rel(TelemetryConsumer, ApiRegistration, "Обогощение поступающей телеметрии")
+
+    Boundary(DfmContainer, "Container: Device Function Managmet") {
+        Container(DfmAPI, "API Device Function Managmet Service", "Component: Java", "Предоставляет API сервиса управления функциями устройств")
+        Container(Commands, "Commands Controller", "Component: Java", "Анализирует запрос пользователя и инициирует выполнение команд")
+        Container(SendCommand, "Send Command", "Component: Java", "Посылает команды на IOT устройства")
+        Container(DfmCheckAccount, "Check Account", "Component: Java", "Проверяет возможность обслуживания устройств")
+        Rel(DfmAPI, Commands, "")
+        Rel(Commands, SendCommand, "")
+        Rel(Commands, ApiRegistration, "Получение данных об устройствах")
+        Rel(Commands, DfmCheckAccount, "")
+        Rel(DfmCheckAccount, AccountControl, "")
+    }
+    Rel(Gateway, DfmAPI, "GET/PUT для функций устройств")
+
+    ContainerDb(TelemetryDB, "TelemetryDB", "Container: ClickHouse", "Хранит данные телеметрии")
+    Container(telemetryCache, "Telemetry Cache", "Container: Valkey", "Кэширование отчетов", $sprite="redis")
+    Boundary(Telemetry, "Container: Telemetry Service") {
+        Container(TelemetryAPI, "API Telemetry Service", "Component: Java", "Предоставляет API сервиса получения данных о состоянии устройств, включая исторические данные)")
+        Container(TelemetryController, "Telemetry Controller", "Component: Java", "Формирует данные")
+        Rel(TelemetryAPI, TelemetryController, "")
+        Rel(TelemetryController, TelemetryDB, "")
+        Rel(TelemetryController, telemetryCache, "")
+    }
+    Rel(Gateway, TelemetryAPI, "GET запросы о состоянии устройств")
+    
+    Container(accountControlCache, "Account Control Cache", "Container: Valkey", "Кэширование данных аккаунта", $sprite="redis")
+    ContainerDb(AccountDB, "AccountDB", "Container: PostgreSQL", "Хранит данные акаунтов", $sprite="postgresql")
+    Boundary(Accounts, "Container: Accounts") {
+        Container(AccountsAPI, "API Accounts Service", "Component: Java", "Предоставляет API сервиса аккаунтов)")
+        Container(AccountsController, "Accounts Controller", "Component: Java", "Формирует данные")
+        Container(AccountsCheckAccount, "Check Account", "Component: Java", "Проверяет возможность обслуживания устройств")
+
+        Rel(AccountsAPI, AccountsController, "")
+        Rel(AccountsController, AccountDB, "")
+        Rel(AccountsController, accountControlCache, "")
+        Rel(AccountsController, AccountsCheckAccount, "")
+        Rel(AccountsCheckAccount, AccountControl, "")
+    }
+    Rel(Gateway, AccountsAPI, "")
+}   
+Rel(SendCommand, iot, "Получение/Изменение состояние функций")
+
+SHOW_LEGEND()
+@enduml
