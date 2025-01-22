@@ -1,0 +1,89 @@
+@startuml
+
+title Диаграмма контейнеров SaaS системы SmartHome (To be) 
+
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!define SPRITESURL https://raw.githubusercontent.com/rabelenda/cicon-plantuml-sprites/v1.0/sprites
+!includeurl SPRITESURL/postgresql.puml
+' !includeurl SPRITESURL/mongodb.puml
+' !includeurl SPRITESURL/java.puml
+    
+Person(clients, "Пользователи", "Клиенты компании (владельцы домов)")
+Person(staff, "Сотрудники", "Операторы и Администраторы системы")
+System_Ext(iot, "IOT Устройства", "Котлы, датчики, реле света, замки")
+System_Ext(extPaymentService, "Сервис оплаты", "REST API")
+System_Ext(extEmailService, "Почтовый сервис", "")
+
+System_Boundary(smartHome, "SaaS система SmartHome") {
+    Container(webapp, "Frontend приложение", "Container: React", "Обеспечивает функциональность фронтенда клинта и сотрудника")
+    Container(gateway, "Api Gateway", "Container: Apisix")
+    Container(logger, "Logger", "Container: OpenSearch", "Сервис логирования обеспечивает сбор и хранения логов со всех серисов системы")
+    Container(prometheus, "Monitoring", "Container: Prometheus", "Сервис мониторинга обеспечивает мониторинг работоспособности всех сервисов системы и инфраструктуры")
+    Container(auth, "Auth", "Container: Java", "Сервис аутантификации обеспечивает аутантификацию для клиентов, сотрудников и устройств")
+    ContainerDb(AuthDB, "AuthDB", "Container: PostgreSQL", "Хранит учетные данные", $sprite="postgresql")
+    Rel_L(gateway, auth, "")
+    Rel_R(auth, AuthDB, "")
+
+    Boundary(deviceManagmet, "Домен Управление устройствами") {
+        Container(registration, "Device Registration", "Container: Java", "Добовление и отключение устройств")
+        Container(functionManagment, "Device Function Managmet", "Container: Java", "Управление функциями устройств (температура, освещение, замки)")
+        ContainerDb(DeviceDB, "DeviceDB", "Container: PostgreSQL", "Хранит данные устройств", $sprite="postgresql")
+        Rel(registration, DeviceDB, "")
+        Rel(functionManagment, registration, "")
+    }
+
+    Boundary(deviceMonitoring, "Домен Мониторинг устройств") {
+        ContainerQueue(broker, "Брокер сообщений", "Container: Kafka", "Обеспечивает гарантированную доставку телеметрии")
+        Container(telemetry, "Telemetry Service", "Container: Java", "Предоставляет данные о состоянии устройств, включая исторические данные)")
+        Container(telemetryProducer, "Telemetry Producer", "Container: Java", "Складывает запросы от apisix в кафку")
+        Container(telemetryConsumer, "Telemetry Consumer", "Container: Java", "Выбирает сообщения из кафки и сохраняет в БД")
+        ContainerDb(TelemetryDB, "TelemetryDB", "Container: ClickHouse", "Хранит данные телеметрии")
+        Rel(broker, telemetryConsumer, "Телеметрия")
+        Rel(telemetryProducer, broker, "Телеметрия")
+        Rel(telemetryConsumer, TelemetryDB, "Запись")
+        Rel(telemetry, TelemetryDB, "Чтение")
+    }
+
+    Boundary(serviceManagmet, "Домен Управления сервисами") {
+        Boundary(accountSubdomain, "Субдомен Управления акаунами") {
+            Container(accounts, "Accounts", "Container: Java", "Сервис Управление акаунтом: добавление/изменение/удаление акаунта, изменение опций сервиса, блокировки/разблокировки, история изменений акаунта, попролнение баланса)")
+            Container(notifications, "Notifications", "Container: Java", "Сервис рассылка email оповещений")
+            ContainerDb(AccountDB, "AccountDB", "Container: PostgreSQL", "Хранит данные акаунтов", $sprite="postgresql")
+            Rel(accounts, AccountDB , "")
+            Rel(accounts, notifications , "")
+            Rel(notifications, AccountDB , "")
+            Rel(notifications, extEmailService, "")
+        }
+        Boundary(billingSubdomain, "Субдомен Биллинг") {
+            Container(accountControl, "Account Control", "Container: Java", "Контроль использования услуг (разрешает остальным сервисам обслуживать клиента)")
+            Container(accountControlCache, "Account Control Cache", "Container: Redis", "Кэширование данных аккаунта")
+            Container(payments, "Payments", "Container: Java", "Оплата услуг")
+            ContainerDb(BillingDB, "BillingDB", "Container: PostgreSQL", "Хранит биллинговые данные", $sprite="postgresql")
+            Rel(accountControl, BillingDB , "")
+            Rel(payments, BillingDB , "")
+            Rel(payments, extPaymentService, "Интеграция с системами оплаты")
+            Rel(accountControl, accountControlCache, "")
+        }
+        Rel(accounts, accountControl , "")
+        Rel(accounts, payments , "")
+    }
+
+    Rel_U(iot, gateway , "Телеметрия")
+    Rel_U(functionManagment, iot, "Команды")
+    Rel(registration, accountControl , "")
+    Rel(functionManagment, accountControl , "")
+    Rel(gateway, telemetry , "")
+    Rel_U(gateway, telemetryProducer , "Телеметрия1")
+    Rel(clients, webapp , "")
+    Rel(staff, webapp , "")
+    Rel(webapp, gateway , "")
+    Rel(gateway, registration , "Запросы состояния/добавление(удаление) устройств")
+    Rel(telemetryConsumer, registration , "Обогощение")
+    Rel(gateway, functionManagment , "Запросы состояния/изменение состояния")
+    Rel(gateway, accounts , "")
+    Rel(accounts, auth , "") 
+}
+
+SHOW_LEGEND()
+@enduml

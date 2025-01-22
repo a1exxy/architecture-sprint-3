@@ -1,0 +1,75 @@
+@startuml
+
+title Диаграмма контекста SaaS системы SmartHome (To be) 
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!define SPRITESURL https://raw.githubusercontent.com/rabelenda/cicon-plantuml-sprites/v1.0/sprites
+!includeurl SPRITESURL/postgresql.puml
+!includeurl SPRITESURL/mongodb.puml
+' !includeurl SPRITESURL/java.puml
+    
+Person(clients, "Пользователи", "Клиенты компании (владельцы домов)")
+Person(staff, "Сотрудники", "Операторы и Администраторы системы")
+System_Ext(iot, "IOT Устройства", "Котлы, датчики, реле света, замки")
+System_Ext(extPaymentService, "Сервис оплаты", "")
+System_Ext(extEmailService, "Почтовый сервис", "")
+
+System_Boundary(smartHome, "SaaS система SmartHome") {
+
+    Container(webapp, "Frontend приложение", "React")
+    Container(gateway, "Api Gateway", "Apisix")
+    
+
+    Boundary(deviceManagmet, "Домен Управление устройствами") {
+        Container(registration, "Device Registration", "Context", "добовление и отключение устройств")
+        Container(functionManagment, "Device Function Managmet", "Context", "управление функциями устройств (температура, освещение, замки)")
+        ContainerDb(deviceDb, "База данных deviceDb", "PostgreSQL", "Хранит данные устройств", $sprite="postgresql")
+        Rel(registration, deviceDb, "")
+        Rel(functionManagment, registration, "")
+    }
+    Boundary(deviceMonitoring, "Домен Мониторинг устройств") {
+        Container(telemetry, "Telemetry", "Context", "Телеметрия (Состояние устройств, исторические данные)")
+        Container(telemetryCollector, "Telemetry Collector", "Context", "Сборщик телеметрии")
+        ContainerDb(telemetryDb, "База данных telemetryDb", "ClickHouse", "Хранит данные телеметрии")
+        Rel(telemetryCollector, telemetryDb, "Запись")
+        Rel(telemetry, telemetryDb, "Чтение")
+    }
+    Boundary(serviceManagmet, "Домен Управления сервисами") {
+        Boundary(accountSubdomain, "Субдомен Управления акаунами") {
+            Container(accounts, "Accounts", "Context", "Управление акаунтом (регистрация аккаунта, изменение опций сервиса, сброс пароля, блокировки/разблокировки, архивация аккаунта, история изменений акаунта)")
+            Container(notifications, "Notifications", "Context", "Рассылка оповещений")
+            ContainerDb(accountDb, "База данных accountDb", "PostgreSQL", "Хранит данные акаунтов", $sprite="postgresql")
+            Rel(accounts, accountDb , "")
+            Rel(accounts, notifications , "")
+            Rel(notifications, accountDb , "")
+            Rel(notifications, extEmailService, "")
+        }
+        Boundary(billingSubdomain, "Субдомен Биллинг") {
+            Container(accountControl, "Account Control", "Context", "Контроль использования сервиса")
+            Container(payments, "Payments", "Context", "Оплата услуг (интеграция с системами оплаты)")
+            ContainerDb(billingDb, "База данных billingDb", "PostgreSQL", "Хранит биллинговые данные", $sprite="postgresql")
+            Rel(accountControl, billingDb , "")
+            Rel(payments, billingDb , "")
+            Rel(payments, extPaymentService, "")
+        }
+         Rel(accounts, accountControl , "")
+
+    }
+    Rel(registration, accountControl , "")
+    Rel(functionManagment, accountControl , "")
+
+    Rel_D(clients, webapp , "")
+    Rel(staff, webapp , "")
+    Rel_L(webapp, gateway , "")
+    Rel_D(iot, gateway , "Телеметрия")
+    Rel_U(functionManagment, iot , "Команды")
+    Rel(gateway, registration , "")
+    Rel(gateway, functionManagment , "")
+    Rel(gateway, telemetryCollector , "Телеметрия")
+    Rel(gateway, accounts , "")
+    Rel(gateway, telemetry , "")
+    Rel(accounts, payments , "")
+}
+
+SHOW_LEGEND()
+@enduml

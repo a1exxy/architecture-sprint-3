@@ -1,0 +1,44 @@
+@startuml
+header ER диаграмма
+
+package DeviceDB <<database>> {
+together{
+
+entity "Account" as account {
+  +id: int
+  +is_active: bool
+}
+
+entity "House" as house {
+  +id: int
+  +address: string
+  +owner_id: int
+}
+
+entity "Device" as device {
+  +id: int
+  +name: string
+  +serial_numeber: string
+  +device_type_id: int
+  +house_id: int
+}
+}
+entity "DeviceType" as device_type {
+  +id: int
+  +type_name: string
+  +capability_list: [int]
+}
+
+entity "DeviceCapability" as device_capability {
+    +id: int
+    +name: string
+}
+
+account::id ||--o{ house::owner_id : 
+house::id ||--o{ device::house_id : 
+device_type::id ||--o{ device::device_type_id : 
+device_type::capability_list }|--o{ device_capability::id :
+
+}
+
+@enduml

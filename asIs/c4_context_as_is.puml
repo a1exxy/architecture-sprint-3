@@ -1,0 +1,25 @@
+@startuml
+
+title Диаграмма контекста Smart-home-monolith (AS IS) 
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!define SPRITESURL https://raw.githubusercontent.com/rabelenda/cicon-plantuml-sprites/v1.0/sprites
+!includeurl SPRITESURL/postgresql.puml
+!includeurl SPRITESURL/java.puml
+
+Person(clients, "Пользователи", "Клиенты компании (владельцы домов)")
+Person(staff, "Сотрудники", "Операторы и Администраторы системы")
+System_Ext(iot, "Устройства", "Котлы, датчики температуры")
+
+System_Boundary(mono, "Система управления") {
+    Container(app, "Приложение", "Java", "1) передает команды устройствам от пользователей\n2) предоставляет ползователям состояние дома",  $sprite="java")
+    ContainerDb(db, "База данных", "PostgreSQL", "Хранит данные с датчиков, состояние котлов, данные пользователей", $sprite="postgresql")
+}
+
+Rel_U(app, iot, "Запросы температуры, команды вкл./откл. отопления")
+Rel(clients, app, "Получение состояния температуры и команды на изменение состояния котла")
+Rel(app, db, "")
+Rel(staff, app, "Добавление/удаление устройств, управление пользователями")
+
+SHOW_LEGEND()
+@enduml
