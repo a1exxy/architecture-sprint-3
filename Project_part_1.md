@@ -56,9 +56,9 @@
 
 ### 5. Визуализация контекста системы — диаграмма С4
 
-[![Диаграмма контейнеров оригинального проекта](https://github.com/a1exxy/architecture-sprint-3/blob/sprint-3/с4_context_as_is.png)](https://github.com/a1exxy/architecture-sprint-3/blob/sprint-3/с4_context_as_is.png)
+[![Диаграмма контейнеров оригинального проекта](https://github.com/a1exxy/architecture-sprint-3/blob/sprint-3/c4_context_as_is.png)](https://github.com/a1exxy/architecture-sprint-3/blob/sprint-3/c4_context_as_is.png)
 
-[Исходник Диаграмма контейнеров оригинального проекта](https://github.com/a1exxy/architecture-sprint-3/blob/sprint-3/asIs/с4_context_as_is.puml)
+[Исходник Диаграмма контейнеров оригинального проекта](https://github.com/a1exxy/architecture-sprint-3/blob/sprint-3/asIs/c4_context_as_is.puml)
 
 # Задание 2. Проектирование микросервисной архитектуры
 
